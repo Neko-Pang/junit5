@@ -14,7 +14,6 @@ import static org.assertj.core.api.Assertions.allOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_METHOD;
-import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.assertRecordedExecutionEventsContainsExactly;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.container;
@@ -192,17 +191,14 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 
 	@Test
 	void exceptionInAfterAllCallbackDoesNotHideExceptionInBeforeAllCallback() {
-		LauncherDiscoveryRequest request = request().selectors(
-			selectClass(TestCaseWithThrowingBeforeAllAndAfterAllCallback.class)).build();
+		Class<?> testClass = TestCaseWithThrowingBeforeAllAndAfterAllCallbacks.class;
 
-		FailureTestCase.exceptionToThrowInAfterAll = Optional.of(new IOException("after"));
-
-		ExecutionEventRecorder eventRecorder = executeTests(request);
+		ExecutionEventRecorder eventRecorder = executeTestsForClass(testClass);
 
 		assertRecordedExecutionEventsContainsExactly(eventRecorder.getExecutionEvents(), //
 			event(engine(), started()), //
-			event(container(TestCaseWithThrowingBeforeAllAndAfterAllCallback.class), started()), //
-			event(container(TestCaseWithThrowingBeforeAllAndAfterAllCallback.class), finishedWithFailure(allOf( //
+			event(container(testClass), started()), //
+			event(container(testClass), finishedWithFailure(allOf( //
 				message("beforeAll callback"), //
 				suppressed(0, message("afterAll callback"))))), //
 			event(engine(), finishedSuccessfully()));
@@ -212,9 +208,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 	void exceptionsInConstructorAndAfterAllCallbackAreReportedWhenTestInstancePerMethodIsUsed() {
 		Class<?> testClass = TestCaseWithInvalidConstructorAndThrowingAfterAllCallbackAndPerMethodLifecycle.class;
 
-		LauncherDiscoveryRequest request = request().selectors(selectClass(testClass)).build();
-
-		ExecutionEventRecorder eventRecorder = executeTests(request);
+		ExecutionEventRecorder eventRecorder = executeTestsForClass(testClass);
 
 		assertRecordedExecutionEventsContainsExactly(eventRecorder.getExecutionEvents(), //
 			event(engine(), started()), //
@@ -229,9 +223,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 	void exceptionInConstructorPreventsExecutionOfAfterAllCallbacksWhenTestInstancePerClassIsUsed() {
 		Class<?> testClass = TestCaseWithInvalidConstructorAndThrowingAfterAllCallbackAndPerClassLifecycle.class;
 
-		LauncherDiscoveryRequest request = request().selectors(selectClass(testClass)).build();
-
-		ExecutionEventRecorder eventRecorder = executeTests(request);
+		ExecutionEventRecorder eventRecorder = executeTestsForClass(testClass);
 
 		assertRecordedExecutionEventsContainsExactly(eventRecorder.getExecutionEvents(), //
 			event(engine(), started()), //
@@ -247,6 +239,8 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 		FailureTestCase.exceptionToThrowInBeforeEach = Optional.empty();
 		FailureTestCase.exceptionToThrowInAfterEach = Optional.empty();
 	}
+
+	// -------------------------------------------------------------------------
 
 	static class FailureTestCase {
 
@@ -326,7 +320,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 
 	@ExtendWith(ThrowingBeforeAllCallback.class)
 	@ExtendWith(ThrowingAfterAllCallback.class)
-	static class TestCaseWithThrowingBeforeAllAndAfterAllCallback {
+	static class TestCaseWithThrowingBeforeAllAndAfterAllCallbacks {
 		@Test
 		void test() {
 		}
